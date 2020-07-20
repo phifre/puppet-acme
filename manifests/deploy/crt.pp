@@ -61,61 +61,64 @@ define acme::deploy::crt (
     }
   }
 
-  concat { $crt_full_chain:
-    owner => 'root',
-    group => $group,
-    mode  => '0644',
-  }
+  $acme_csrs_array = split($::acme_csrs, ',')
 
-  concat { $crt_full_chain_with_key:
-    owner => 'root',
-    group => $group,
-    mode  => '0640',
-  }
-
-  concat::fragment { "${real_domain}_key" :
-    target => $crt_full_chain_with_key,
-    source => $key,
-    order  => '01',
-  }
-
-  concat::fragment { "${real_domain}_fullchain":
-    target    => $crt_full_chain_with_key,
-    source    => $crt_full_chain,
-    order     => '10',
-    subscribe => Concat[$crt_full_chain],
-  }
-
-  concat::fragment { "${real_domain}_crt":
-    target  => $crt_full_chain,
-    content => $crt_content,
-    order   => '10',
-  }
-
-  concat::fragment { "${real_domain}_dh":
-    target  => $crt_full_chain,
-    source  => $dh,
-    order   => '30',
-    require => File[$dh],
-  }
-
-  if ($crt_chain_content and $crt_chain_content =~ /BEGIN CERTIFICATE/) {
-    file { $crt_chain:
-      ensure  => file,
-      owner   => 'root',
-      group   => $group,
-      content => $crt_chain_content,
-      mode    => '0644',
+  if ($domain in $acme_csrs_array) {
+    concat { $crt_full_chain:
+      owner => 'root',
+      group => $group,
+      mode  => '0644',
     }
-    concat::fragment { "${real_domain}_ca":
+
+    concat { $crt_full_chain_with_key:
+      owner => 'root',
+      group => $group,
+      mode  => '0640',
+    }
+
+    concat::fragment { "${real_domain}_key" :
+      target => $crt_full_chain_with_key,
+      source => $key,
+      order  => '01',
+    }
+
+    concat::fragment { "${real_domain}_fullchain":
+      target    => $crt_full_chain_with_key,
+      source    => $crt_full_chain,
+      order     => '10',
+      subscribe => Concat[$crt_full_chain],
+    }
+
+    concat::fragment { "${real_domain}_crt":
       target  => $crt_full_chain,
-      content => $crt_chain_content,
-      order   => '50',
+      content => $crt_content,
+      order   => '10',
     }
-  } else {
-    file { $crt_chain:
-      ensure => absent,
-      force  => true,
+
+    concat::fragment { "${real_domain}_dh":
+      target  => $crt_full_chain,
+      source  => $dh,
+      order   => '30',
+    }
+
+    if ($crt_chain_content and $crt_chain_content =~ /BEGIN CERTIFICATE/) {
+      file { $crt_chain:
+        ensure  => file,
+        owner   => 'root',
+        group   => $group,
+        content => $crt_chain_content,
+        mode    => '0644',
+      }
+      concat::fragment { "${real_domain}_ca":
+        target  => $crt_full_chain,
+        content => $crt_chain_content,
+        order   => '50',
+      }
+    } else {
+      file { $crt_chain:
+        ensure => absent,
+        force  => true,
+      }
     }
   }
 }

@@ -190,19 +190,21 @@ define acme::request (
   $renew_seconds = $renew_days*86400
   notify { "acme renew set to ${renew_days} days (or ${renew_seconds} seconds) for domain ${domain}": loglevel => debug }
 
+  # NOTE: If the CSR file is newer than the cert, this check will trigger
+  # a renewal of the cert. However, acme.sh may not recognize the change
+  # in the CSR or decide that the change does not need a renewal of the cert.
+  # In this case it will be triggered on every Puppet run, until $renew_days
+  # is reached and acme.sh finally renews the cert. This is a known limitation
+  # that does not cause any side-effects.
   $le_check_command = join([
-    "test -f ${le_crt_file}",
+    "test -f \'${le_crt_file}\'",
     '&&',
     "openssl x509 -checkend ${renew_seconds} -noout -in \'${le_crt_file}\'",
     '&&',
     'test',
-    '$(',
-    "${stat_expression} \'${le_crt_file}\'",
-    ')',
+    "\$( ${stat_expression} \'${le_crt_file}\' )",
     '-gt',
-    '$(',
-    "${stat_expression} \'${csr_file}\'",
-    ')',
+    "\$( ${stat_expression} \'${csr_file}\' )",
   ], ' ')
 
   # Check if challenge type is supported.
@@ -228,7 +230,7 @@ define acme::request (
     $acme_validation,
     "--log ${acmelog}",
     '--log-level 2',
-    "--home ${$acme_dir}",
+    "--home ${acme_dir}",
     '--keylength 4096',
     "--accountconf ${account_conf_file}",
     $_ocsp,
@@ -251,7 +253,7 @@ define acme::request (
     "--days ${renew_days}",
     "--log ${acmelog}",
     '--log-level 2',
-    "--home ${$acme_dir}",
+    "--home ${acme_dir}",
     '--keylength 4096',
     "--accountconf ${account_conf_file}",
     $_ocsp,

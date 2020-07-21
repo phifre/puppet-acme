@@ -133,9 +133,11 @@ class acme (
       }
     }
     # Collect certificates.
-    if (defined('::acme_crts') and $::acme_crts and $::acme_crts != '') {
-      $acme_crts_array = split($::acme_crts, ',')
+    if ($facts['acme_crts'] and $facts['acme_crts'] != '') {
+      $acme_crts_array = split($facts['acme_crts'], ',')
       ::acme::request::crt { $acme_crts_array: }
+    } else {
+      notify { 'got no acme_crts from facter (may need another puppet run)': }
     }
   }
 
